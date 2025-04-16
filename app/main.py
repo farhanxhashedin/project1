@@ -3,6 +3,7 @@ from fastapi import FastAPI, File, UploadFile
 from tempfile import NamedTemporaryFile
 from app.parsers.docx_parser import parse_docx
 from app.langgraph_flow import build_langgraph
+from app.codegen import generate_code_from_parsed
 
 app = FastAPI()
 graph = build_langgraph()
@@ -19,8 +20,17 @@ async def upload_srs(file: UploadFile = File(...)):
 
     try:
         text = parse_docx(tmp_path)
-        result = graph.invoke({"srs_text": text})
         os.remove(tmp_path)
-        return {"structured_output": result["parsed_data"]}
+        result = graph.invoke({"srs_text": text})
+        parsed_output = result["parsed_data"]
+
+        # generate code from parsed output
+        generated_code = generate_code_from_parsed(parsed_output)
+
+        return {
+            "parsed_requirements": parsed_output,
+            "generated_code": generated_code
+        }
+
     except Exception as e:
         return {"error": str(e)}
